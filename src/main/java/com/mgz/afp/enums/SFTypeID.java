@@ -18,10 +18,16 @@ along with Alpheus AFP Parser.  If not, see <http://www.gnu.org/licenses/>
 */
 package com.mgz.afp.enums;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
 
 public enum SFTypeID {
+
+  //---- Enum values
+
   Undefined(0, 0, 0),
   /**
    * The Begin Active Environment Group structured field begins an Active Environment Group, which
@@ -165,18 +171,25 @@ public enum SFTypeID {
   XMD_XMLDescriptor(0xD3, 0xA6, 0x8E),;
 
 
+  //---- Fields
+
   /**
    * SFTypeID[2].
    */
-  SFClass sfClass;
+  private final SFClass sfClass;
+
   /**
    * SFTypeID[3].
    */
-  SFType sfType;
+  private final SFType sfType;
+
   /**
    * SFTypeID[4].
    */
-  SFCategory sfCategory;
+  private final SFCategory sfCategory;
+
+
+  //---- Constructor
 
   SFTypeID(int sfClass, int sfType, int sfCategory) {
     this.sfClass = SFClass.valueOf(sfClass);
@@ -184,21 +197,35 @@ public enum SFTypeID {
     this.sfCategory = SFCategory.valueOf(sfCategory);
   }
 
+
+  //---- Static
+
+  private static final Map<Integer, SFTypeID> TYPE_MAP = new HashMap<>();
+
+  static {
+    for (final SFTypeID sfTypeID : values()) {
+      TYPE_MAP.put(toKey(sfTypeID.sfClass.val, sfTypeID.sfType.val, sfTypeID.sfCategory.val), sfTypeID);
+    }
+  }
+
+  private static int toKey(int sfClass, int sfType, int sfCategory) {
+    return sfClass << 16 | sfType << 8 | sfCategory;
+  }
+
   public static SFTypeID parse(InputStream is) throws IOException {
     int sfClass = is.read();
     int sfType = is.read();
     int sfCategory = is.read();
 
-    for (SFTypeID sfTypeID : SFTypeID.values()) {
-      if (sfTypeID.sfClass.val == sfClass
-          && sfTypeID.sfType.val == sfType
-          && sfTypeID.sfCategory.val == sfCategory) {
-        return sfTypeID;
-      }
+    if (sfClass == -1 || sfType == -1 || sfCategory == -1) {
+      throw new EOFException();
     }
 
-    return Undefined;
+    return TYPE_MAP.getOrDefault(toKey(sfClass, sfType, sfCategory), Undefined);
   }
+
+
+  //---- Methods
 
   public byte[] toBytes() {
     byte[] data = new byte[3];
@@ -208,27 +235,19 @@ public enum SFTypeID {
     return data;
   }
 
+
+  //---- Properties
+
   public SFClass getSfClass() {
     return sfClass;
-  }
-
-  public void setSfClass(SFClass sfClass) {
-    this.sfClass = sfClass;
   }
 
   public SFType getSfType() {
     return sfType;
   }
 
-  public void setSfType(SFType sfType) {
-    this.sfType = sfType;
-  }
-
   public SFCategory getSfCategory() {
     return sfCategory;
   }
 
-  public void setSfCategory(SFCategory sfCategory) {
-    this.sfCategory = sfCategory;
-  }
 }
